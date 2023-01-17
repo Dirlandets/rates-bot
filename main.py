@@ -26,31 +26,48 @@ async def send_welcome(message: types.Message):
     await message.reply("Hi!\nI'm EchoBot!\nPowered by aiogram.")
 
 
-TEST_PARAMS = {
+REQUEST_PARAMS = {
     'sendingCountryId': 'RUS',
     'sendingCurrencyId': 810,
     'receivingCountryId': 'TUR',
-    'receivingCurrencyId': '949',
     'paymentMethod': 'debitCard',
     'receivingAmount': 1000,
     'receivingMethod': 'cash',
     'paidNotificationEnabled': 'false',
 }
 
+CURR_MAP = {
+    'usd': 840,
+    'eur': 978,
+    'try': 949,
+    'rub': 810,
+    'gel': 981,
+}
+
+DEFAULT_CURR = 'try'
+
 @dp.message_handler(commands=['korona'])
-async def rates(message: types.Message):
+async def korona(message: types.Message):
     """Echo handler."""
-    msg = ''
+    args = message.text.lower().split()[1:]
+    currency = args[0] if args else DEFAULT_CURR
+    currency_code = CURR_MAP.get(currency)
+    print(f'{args}, {currency}, {currency_code}')
+
     async with aiohttp.ClientSession() as session:
         async with session.get(
             f'{KORONA_URL}/transfers/online/api/transfers/tariffs',
-            params=TEST_PARAMS,
+            params={
+                **REQUEST_PARAMS,
+                'receivingCurrencyId': str(currency_code),
+            },
         ) as resp:
             rates = await resp.json()
+            print(rates)
             if resp.status != 200:
                 msg = 'Something happend :('
-            rub_tl = rates[0]['exchangeRate']
-            msg = f'RUB/TL: {rub_tl}'
+            rate = rates[0]['exchangeRate']
+            msg = f'{currency.upper()}:RUB: {rate}'
     await message.answer(msg)
 
 
